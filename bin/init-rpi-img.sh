@@ -9,15 +9,17 @@
 #  1. enlarge partion 2 by [part size] MB
 #  2. enable ssh
 #  3. add default WiFi conections
-#  4. set i2c_baudrate=400K
-#  5. add two sc16is752-i2c devices
-#  6. enable gpio-poweroff
-#  7. disable rainbow screen
-#  8. enable i2c_arm, spi
-#  9. generate locale en_US.UTF-8, zh_CN.UTF-8
-# 10. set LANG=zh_CN
-# 11. install /usr/local/qt5.15
-# 12. remove boot screen informations
+#  4. modify /boot/config.txt
+#     4.1 set i2c_baudrate=400K
+#     4.2 add two sc16is752-i2c devices
+#     4.3 enable gpio-poweroff
+#     4.4 add rtc ds3231
+#  5. disable rainbow screen
+#  6. enable i2c_arm, spi
+#  7. generate locale en_US.UTF-8, zh_CN.UTF-8
+#  8. set LANG=zh_CN
+#  9. install /usr/local/qt5.15
+# 10. remove boot screen informations
 
 if [ "$1" == "" ]; then
     echo "USAGE:"
@@ -98,6 +100,7 @@ cat <<"CONFIG" >> /mnt/rpi/boot/config.txt
 dtparam=i2c_baudrate=400000
 dtoverlay=sc16is752-i2c,int_pin=24,addr=0x48
 dtoverlay=sc16is752-i2c,int_pin=23,addr=0x49
+dtoverlay=i2c-rtc,ds3231
 dtoverlay=gpio-poweroff
 disable_splash=1
 CONFIG
