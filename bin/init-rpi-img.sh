@@ -14,12 +14,14 @@
 #     4.2 add two sc16is752-i2c devices
 #     4.3 enable gpio-poweroff
 #     4.4 add rtc ds3231
+#     4.5 add i2s audio
 #  5. disable rainbow screen
 #  6. enable i2c_arm, spi
 #  7. generate locale en_US.UTF-8, zh_CN.UTF-8
 #  8. set LANG=zh_CN
 #  9. install /usr/local/qt5.15
 # 10. remove boot screen informations
+# 11. generate /etc/asound.conf
 
 if [ "$1" == "" ]; then
     echo "USAGE:"
@@ -94,6 +96,48 @@ network={
 WPACONF
 
 
+# add /etc/asound.conf
+cat <<"ASOUNDCONF" > /mnt/rpi/etc/asound.conf
+pcm.speakerbonnet {
+   type hw card 0
+}
+
+pcm.dmixer {
+   type dmix
+   ipc_key 1024
+   ipc_perm 0666
+   slave {
+     pcm "speakerbonnet"
+     period_time 0
+     period_size 1024
+     buffer_size 8192
+     rate 44100
+     channels 2
+   }
+}
+
+ctl.dmixer {
+    type hw card 0
+}
+
+pcm.softvol {
+    type softvol
+    slave.pcm "dmixer"
+    control.name "PCM"
+    control.card 0
+}
+
+ctl.softvol {
+    type hw card 0
+}
+
+pcm.!default {
+    type             plug
+    slave.pcm       "softvol"
+}
+ASOUNDCONF
+
+
 # modify /boot/config.txt
 grep 'dtparam=i2c_baudrate' /mnt/rpi/boot/config.txt &> /dev/null || \
 cat <<"CONFIG" >> /mnt/rpi/boot/config.txt
@@ -101,11 +145,14 @@ dtparam=i2c_baudrate=400000
 dtoverlay=sc16is752-i2c,int_pin=24,addr=0x48
 dtoverlay=sc16is752-i2c,int_pin=23,addr=0x49
 dtoverlay=i2c-rtc,ds3231
+dtoverlay=hifiberry-dac
+dtoverlay=i2s-mmap
 dtoverlay=gpio-poweroff
 disable_splash=1
 CONFIG
 
 sed -i 's/#dtparam=\(i2c_arm\|spi\)=on/dtparam=\1=on/g' /mnt/rpi/boot/config.txt
+sed -i "s|^dtparam=audio=on$|#dtparam=audio=on|" /mnt/rpi/boot/config.txt
 
 
 # modify /boot/cmdline.txt, remove boot messages
