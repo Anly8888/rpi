@@ -65,3 +65,6 @@ sed -i 's/^#CHROOT //g' /mnt/rpi/etc/ld.so.preload
 
 # unmount everything
 umount /mnt/rpi/{dev/pts,dev,sys,proc,boot,}
+
+# detach loop
+losetup -d $LOOP
