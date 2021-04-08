@@ -22,6 +22,7 @@
 #  9. install /usr/local/qt5.15
 # 10. remove boot screen informations
 # 11. generate /etc/asound.conf
+# 12. change apt sources to mirror of China
 
 if [ "$1" == "" ]; then
     echo "USAGE:"
@@ -161,6 +162,14 @@ if ! grep 'logo.nologo' /mnt/rpi/boot/cmdline.txt &> /dev/null; then
         /mnt/rpi/boot/cmdline.txt
 fi
 
+#
+# apt sources
+#
+
+# /etc/apt/sources.list
+sed -i 's@http://raspbian.raspberrypi.org@http://mirrors.bfsu.edu.cn/raspbian@' /mnt/rpi/etc/apt/sources.list
+# /etc/apt/sources.list.d/raspi.list
+sed -i 's@http://archive.raspberrypi.org/debian/@http://mirrors.bfsu.edu.cn/raspberrypi/@' /mnt/rpi/etc/apt/sources.list.d/raspi.list
 
 
 #
