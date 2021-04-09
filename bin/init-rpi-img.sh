@@ -171,6 +171,10 @@ sed -i 's@http://raspbian.raspberrypi.org@http://mirrors.bfsu.edu.cn/raspbian@' 
 # /etc/apt/sources.list.d/raspi.list
 sed -i 's@http://archive.raspberrypi.org/debian/@http://mirrors.bfsu.edu.cn/raspberrypi/@' /mnt/rpi/etc/apt/sources.list.d/raspi.list
 
+# disable piwiz startup
+rm /mnt/rpi/etc/xdg/autostart/piwiz.desktop
+
+
 
 #
 # prepare chroot
