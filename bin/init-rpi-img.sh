@@ -172,7 +172,9 @@ sed -i 's@http://raspbian.raspberrypi.org@http://mirrors.bfsu.edu.cn/raspbian@' 
 sed -i 's@http://archive.raspberrypi.org/debian/@http://mirrors.bfsu.edu.cn/raspberrypi/@' /mnt/rpi/etc/apt/sources.list.d/raspi.list
 
 # disable piwiz startup
-rm /mnt/rpi/etc/xdg/autostart/piwiz.desktop
+if [ -e /mnt/rpi/etc/xdg/autostart/piwiz.desktop ]; then
+    rm /mnt/rpi/etc/xdg/autostart/piwiz.desktop
+fi
 
 
 
@@ -205,6 +207,14 @@ if ! grep '^zh_CN' /mnt/rpi/etc/locale.gen &> /dev/null; then
     chroot /mnt/rpi locale-gen
     chroot /mnt/rpi update-locale LANG=zh_CN.UTF-8
 fi
+
+
+# install packages
+chroot /mnt/rpi /usr/bin/apt update
+#chroot /mnt/rpi /usr/bin/apt -y upgrade
+chroot /mnt/rpi /usr/bin/apt -y install libqt5gui5
+chroot /mnt/rpi /usr/bin/apt -y install libpulse-mainloop-glib0 libts0
+#chroot /mnt/rpi /usr/bin/apt -y libgl1-mesa-dri gldriver-test
 
 
 # Qt library
