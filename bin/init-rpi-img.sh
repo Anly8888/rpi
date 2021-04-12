@@ -44,9 +44,9 @@ if [ ! -x /usr/bin/qemu-arm-static ]; then
 fi
 
 
-# the directory of this script is the "source tree"
-relpath=`dirname $0`
-relpath=`(cd "$relpath"; /bin/pwd)`
+# the directory of this project
+srcpath=`dirname $0`
+srcpath=`(cd "$srcpath/.."; /bin/pwd)`
 
 # the sysroot directory to which the raspiberry image will mount
 sysroot=/mnt/rpi
@@ -72,6 +72,7 @@ fi
 
 
 # mount partition
+echo "+ mount ${LOOP}p2 $sysroot"
 mount ${LOOP}p2 $sysroot
 mount ${LOOP}p1 $sysroot/boot
 
@@ -195,10 +196,12 @@ fi
 
 # copy qemu binary
 if [ ! -e $sysroot/usr/bin/qemu-arm-static ]; then
+    echo "+ cp /usr/bin/qemu-arm-static $sysroot/usr/bin/"
     cp /usr/bin/qemu-arm-static $sysroot/usr/bin/
 fi
 
 # mount binds
+echo "+ mount binds"
 mount --bind /dev $sysroot/dev/
 mount --bind /sys $sysroot/sys/
 mount --bind /proc $sysroot/proc/
@@ -220,7 +223,15 @@ if ! grep '^zh_CN' $sysroot/etc/locale.gen &> /dev/null; then
 fi
 
 
+# update /etc/resolv.conf
+#  or 
+# echo nameserver 8.8.8.8 > /etc/resolv.conf
+#echo "+ chroot $sysroot resolvconf -u"
+chroot $sysroot resolvconf -u
+
+
 # install packages
+echo installing packages
 chroot $sysroot /usr/bin/apt update
 #chroot $sysroot /usr/bin/apt -y upgrade
 chroot $sysroot /usr/bin/apt -y install libqt5gui5
@@ -228,16 +239,25 @@ chroot $sysroot /usr/bin/apt -y install libpulse-mainloop-glib0 libts0
 #chroot $sysroot /usr/bin/apt -y libgl1-mesa-dri gldriver-test
 
 
+#
+# copy files
+#
+
 # Qt library
+echo "+ rsync -a --no-g --no-o /opt/rpi/qt5.15 $sysroot/usr/local/"
 rsync -a --no-g --no-o /opt/rpi/qt5.15 $sysroot/usr/local/
 echo /usr/local/qt5.15/lib > $sysroot/etc/ld.so.conf.d/qt5.15.conf
+echo "+ chroot $sysroot ldconfig"
 chroot $sysroot ldconfig
 
-
-# update /etc/resolv.conf
-#  or 
-# echo nameserver 8.8.8.8 > /etc/resolv.conf
-chroot resolvconf -u
+# services
+# WARNING: 
+#   Do NOT install any thing to /lib or chroot will fail
+#
+echo "+ rsync -av --no-g --no-o $srcpath/sysroot/ $sysroot/"
+rsync -av --no-g --no-o $srcpath/sysroot/ $sysroot/
+echo "+ chroot $sysroot systemctl enable splashscreen"
+chroot $sysroot systemctl enable splashscreen
 
 
 echo "You will be transferred to the bash shell now."
@@ -245,6 +265,7 @@ echo "Issue 'exit' when you are done."
 echo "Issue 'su pi' if you need to work as the user pi."
 
 # chroot to raspbian
+echo "+ chroot $sysroot /bin/bash"
 chroot $sysroot /bin/bash
 
 
