@@ -24,6 +24,7 @@
 # 11. generate /etc/asound.conf
 # 12. change apt sources to mirror of China
 
+
 if [ "$1" == "" ]; then
     echo "USAGE:"
     echo "$0 <raspbian.img> [part size]"
@@ -42,6 +43,13 @@ if [ ! -x /usr/bin/qemu-arm-static ]; then
     exit 1
 fi
 
+
+# the directory of this script is the "source tree"
+relpath=`dirname $0`
+relpath=`(cd "$relpath"; /bin/pwd)`
+
+# the sysroot directory to which the raspiberry image will mount
+sysroot=/mnt/rpi
 
 # image file name
 IMG=$1
@@ -64,16 +72,16 @@ fi
 
 
 # mount partition
-mount ${LOOP}p2 /mnt/rpi
-mount ${LOOP}p1 /mnt/rpi/boot
+mount ${LOOP}p2 $sysroot
+mount ${LOOP}p1 $sysroot/boot
 
 
 # enable ssh
-touch /mnt/rpi/boot/ssh
+touch $sysroot/boot/ssh
 
 
 # add WiFi
-cat <<"WPACONF" > /mnt/rpi/boot/wpa_supplicant.conf
+cat <<"WPACONF" > $sysroot/boot/wpa_supplicant.conf
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
 country=CN
@@ -98,7 +106,7 @@ WPACONF
 
 
 # add /etc/asound.conf
-cat <<"ASOUNDCONF" > /mnt/rpi/etc/asound.conf
+cat <<"ASOUNDCONF" > $sysroot/etc/asound.conf
 pcm.speakerbonnet {
    type hw card 0
 }
@@ -140,8 +148,8 @@ ASOUNDCONF
 
 
 # modify /boot/config.txt
-grep 'dtparam=i2c_baudrate' /mnt/rpi/boot/config.txt &> /dev/null || \
-cat <<"CONFIG" >> /mnt/rpi/boot/config.txt
+grep 'dtparam=i2c_baudrate' $sysroot/boot/config.txt &> /dev/null || \
+cat <<"CONFIG" >> $sysroot/boot/config.txt
 dtparam=i2c_baudrate=400000
 dtoverlay=sc16is752-i2c,int_pin=24,addr=0x48
 dtoverlay=sc16is752-i2c,int_pin=23,addr=0x49
@@ -152,14 +160,14 @@ dtoverlay=gpio-poweroff
 disable_splash=1
 CONFIG
 
-sed -i 's/#dtparam=\(i2c_arm\|spi\)=on/dtparam=\1=on/g' /mnt/rpi/boot/config.txt
-sed -i "s|^dtparam=audio=on$|#dtparam=audio=on|" /mnt/rpi/boot/config.txt
+sed -i 's/#dtparam=\(i2c_arm\|spi\)=on/dtparam=\1=on/g' $sysroot/boot/config.txt
+sed -i "s|^dtparam=audio=on$|#dtparam=audio=on|" $sysroot/boot/config.txt
 
 
 # modify /boot/cmdline.txt, remove boot messages
-if ! grep 'logo.nologo' /mnt/rpi/boot/cmdline.txt &> /dev/null; then
+if ! grep 'logo.nologo' $sysroot/boot/cmdline.txt &> /dev/null; then
     sed -i 's/$/ consoleblank=1 logo.nologo loglevel=0 plymouth.enable=0 vt.global_cursor_default=0 fastboot noatime nodiratime noram/' \
-        /mnt/rpi/boot/cmdline.txt
+        $sysroot/boot/cmdline.txt
 fi
 
 #
@@ -167,13 +175,16 @@ fi
 #
 
 # /etc/apt/sources.list
-sed -i 's@http://raspbian.raspberrypi.org@http://mirrors.bfsu.edu.cn/raspbian@' /mnt/rpi/etc/apt/sources.list
+sed -i 's@http://raspbian.raspberrypi.org@http://mirrors.bfsu.edu.cn/raspbian@' $sysroot/etc/apt/sources.list
 # /etc/apt/sources.list.d/raspi.list
-sed -i 's@http://archive.raspberrypi.org/debian/@http://mirrors.bfsu.edu.cn/raspberrypi/@' /mnt/rpi/etc/apt/sources.list.d/raspi.list
+sed -i 's@http://archive.raspberrypi.org/debian/@http://mirrors.bfsu.edu.cn/raspberrypi/@' $sysroot/etc/apt/sources.list.d/raspi.list
 
+
+#
 # disable piwiz startup
-if [ -e /mnt/rpi/etc/xdg/autostart/piwiz.desktop ]; then
-    rm /mnt/rpi/etc/xdg/autostart/piwiz.desktop
+#
+if [ -e $sysroot/etc/xdg/autostart/piwiz.desktop ]; then
+    rm $sysroot/etc/xdg/autostart/piwiz.desktop
 fi
 
 
@@ -183,44 +194,44 @@ fi
 #
 
 # copy qemu binary
-if [ ! -e /mnt/rpi/usr/bin/qemu-arm-static ]; then
-    cp /usr/bin/qemu-arm-static /mnt/rpi/usr/bin/
+if [ ! -e $sysroot/usr/bin/qemu-arm-static ]; then
+    cp /usr/bin/qemu-arm-static $sysroot/usr/bin/
 fi
 
 # mount binds
-mount --bind /dev /mnt/rpi/dev/
-mount --bind /sys /mnt/rpi/sys/
-mount --bind /proc /mnt/rpi/proc/
-mount --bind /dev/pts /mnt/rpi/dev/pts
+mount --bind /dev $sysroot/dev/
+mount --bind /sys $sysroot/sys/
+mount --bind /proc $sysroot/proc/
+mount --bind /dev/pts $sysroot/dev/pts
 
 # ld.so.preload fix
-sed -i 's/^/#CHROOT /g' /mnt/rpi/etc/ld.so.preload
+sed -i 's/^/#CHROOT /g' $sysroot/etc/ld.so.preload
 
 
 # generate locale settings
-if ! grep '^zh_CN' /mnt/rpi/etc/locale.gen &> /dev/null; then
+if ! grep '^zh_CN' $sysroot/etc/locale.gen &> /dev/null; then
     # modify /etc/locale.gen
-    sed -i 's/^\s*\(.._..\)/# \1/g' /mnt/rpi/etc/locale.gen
-    sed -i 's/^#\s*\(en_US\|zh_CN\)\.UTF-8/\1.UTF-8/g' /mnt/rpi/etc/locale.gen
+    sed -i 's/^\s*\(.._..\)/# \1/g' $sysroot/etc/locale.gen
+    sed -i 's/^#\s*\(en_US\|zh_CN\)\.UTF-8/\1.UTF-8/g' $sysroot/etc/locale.gen
 
     # generate locale
-    chroot /mnt/rpi locale-gen
-    chroot /mnt/rpi update-locale LANG=zh_CN.UTF-8
+    chroot $sysroot locale-gen
+    chroot $sysroot update-locale LANG=zh_CN.UTF-8
 fi
 
 
 # install packages
-chroot /mnt/rpi /usr/bin/apt update
-#chroot /mnt/rpi /usr/bin/apt -y upgrade
-chroot /mnt/rpi /usr/bin/apt -y install libqt5gui5
-chroot /mnt/rpi /usr/bin/apt -y install libpulse-mainloop-glib0 libts0
-#chroot /mnt/rpi /usr/bin/apt -y libgl1-mesa-dri gldriver-test
+chroot $sysroot /usr/bin/apt update
+#chroot $sysroot /usr/bin/apt -y upgrade
+chroot $sysroot /usr/bin/apt -y install libqt5gui5
+chroot $sysroot /usr/bin/apt -y install libpulse-mainloop-glib0 libts0
+#chroot $sysroot /usr/bin/apt -y libgl1-mesa-dri gldriver-test
 
 
 # Qt library
-rsync -a --no-g --no-o /opt/rpi/qt5.15 /mnt/rpi/usr/local/
-echo /usr/local/qt5.15/lib > /mnt/rpi/etc/ld.so.conf.d/qt5.15.conf
-chroot /mnt/rpi ldconfig
+rsync -a --no-g --no-o /opt/rpi/qt5.15 $sysroot/usr/local/
+echo /usr/local/qt5.15/lib > $sysroot/etc/ld.so.conf.d/qt5.15.conf
+chroot $sysroot ldconfig
 
 
 # update /etc/resolv.conf
@@ -234,16 +245,18 @@ echo "Issue 'exit' when you are done."
 echo "Issue 'su pi' if you need to work as the user pi."
 
 # chroot to raspbian
-chroot /mnt/rpi /bin/bash
+chroot $sysroot /bin/bash
 
 
-# ----------------------------
+#
 # Clean up
+#
+
 # revert ld.so.preload fix
-sed -i 's/^#CHROOT //g' /mnt/rpi/etc/ld.so.preload
+sed -i 's/^#CHROOT //g' $sysroot/etc/ld.so.preload
 
 # unmount everything
-umount /mnt/rpi/{dev/pts,dev,sys,proc,boot,}
+umount $sysroot/{dev/pts,dev,sys,proc,boot,}
 
 # detach loop
 losetup -d $LOOP
